@@ -59,14 +59,6 @@ print(f"Model saved to {model_save_path}")
 
 view_results(model, dataset, idx=0, show=True)
 view_results(model, dataset, idx=0, show=True)
-# view_results(model, dataset, idx=1)
-# view_results(model, dataset, idx=2)
-# view_results(model, dataset, idx=3)
-# view_results(model, dataset, idx=4)
-# view_results(model, dataset, idx=5)
-# view_results(model, dataset, idx=6)
-# view_results(model, dataset, idx=7)
-# view_results(model, dataset, idx=8)
-# view_results(model, dataset, idx=9)
+
 
             
