@@ -3,6 +3,7 @@ from images import load_images, view_results
 from utils import Dataset
 import matplotlib.pyplot as plt
 import numpy as np
+from dice_loss import DiceLoss
 
 # Load U-NET model
 model = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
@@ -43,7 +44,8 @@ def train_model(model, train_loader, optimizer, loss_fn, epochs=20):
 
         print(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss / len(train_loader):.4f}")
 
-loss_fn = torch.nn.BCELoss()
+# loss_fn = torch.nn.BCELoss()
+loss_fn = DiceLoss()
 optimizer = torch.optim.SGD(model.parameters(), lr=0.001)
 
 train_model(model, train_dataloader, optimizer, loss_fn, epochs=10)
