@@ -7,7 +7,7 @@ from dice_loss import DiceLoss
 
 # Load U-NET model
 model = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
-    in_channels=3, out_channels=1, init_features=32, pretrained=True)
+    in_channels=3, out_channels=1, init_features=32, pretrained=False)
 
 # Image data paths
 images_dir = './images'
@@ -48,7 +48,7 @@ def train_model(model, train_loader, optimizer, loss_fn, epochs=20):
 loss_fn = DiceLoss()
 optimizer = torch.optim.SGD(model.parameters(), lr=0.001)
 
-train_model(model, train_dataloader, optimizer, loss_fn, epochs=10)
+train_model(model, train_dataloader, optimizer, loss_fn, epochs=200)
 
 # Save the trained model
 model_save_path = './unet_model.pth'
@@ -56,11 +56,13 @@ torch.save(model.state_dict(), model_save_path)
 print(f"Model saved to {model_save_path}")
 
 # Visualize results (and save) for a sample image
-# for img in range(len(dataset)):
-#     view_results(model, dataset, idx=img, save_path=f"./results-pretrained/restult-pretrained-{img}.png", show=False)
+for img in range(len(dataset)):
+    view_results(model, dataset, idx=img, save_path=f"./results-dice/restult-{img}.png", show=False)
 
-view_results(model, dataset, idx=0, show=True)
-view_results(model, dataset, idx=0, show=True)
+# view_results(model, dataset, idx=0, show=True)
+# view_results(model, dataset, idx=1, show=True)
+# view_results(model, dataset, idx=2, show=True)
+# view_results(model, dataset, idx=3, show=True)
 
 
             
