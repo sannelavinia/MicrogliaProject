@@ -15,7 +15,7 @@ labels_dir = './labels'
 
 # Load in images
     # Shape = (number of images, x size, y size, channels)
-images_np, labels_np = load_images(images_dir, labels_dir)
+images_np, labels_np = load_images(images_dir, labels_dir, data_augmentation=True)
 
 # Initialize dataset
 dataset = Dataset(images_np, labels_np)
@@ -57,7 +57,7 @@ print(f"Model saved to {model_save_path}")
 
 # Visualize results (and save) for a sample image
 for img in range(len(dataset)):
-    view_results(model, dataset, idx=img, save_path=f"./results-dice/restult-{img}.png", show=False)
+    view_results(model, dataset, idx=img, save_path=f"./results-augmentation-200epochs/restult-{img}.png", show=False)
 
 # view_results(model, dataset, idx=0, show=True)
 # view_results(model, dataset, idx=1, show=True)

@@ -4,11 +4,12 @@ import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
 import torch
+import torchvision.transforms.functional as TF
 
 # This file contains a function to load the images that will be used
 # It also contains a function to view the results for image x in a given dataset
 
-def load_images(images_dir, labels_dir):
+def load_images(images_dir, labels_dir, data_augmentation=False):
     images, labels = [], []
 
     # Get sorted lists of image and label filenames
@@ -16,25 +17,17 @@ def load_images(images_dir, labels_dir):
     label_files = sorted(os.listdir(labels_dir))
     
     for image_file, label_file in zip(image_files, label_files):
-
+        
         img_path = os.path.join(images_dir, image_file)
         label_path = os.path.join(labels_dir, image_file.replace('.ome.tif', '-labels.png'))
 
         image = cv2.imread(img_path, cv2.IMREAD_COLOR)  # Read as RGB
         label = cv2.imread(label_path, cv2.IMREAD_GRAYSCALE)  # Read as grayscale
-        
-        # Read label using Pillow because it is a gif
-        # with Image.open(label_path) as gif:
-                #label = np.array(gif.convert('L'))  # Convert to grayscale
-
-        # Resize images
-        # image = cv2.resize(image, (256, 256))
-        # label = cv2.resize(label, (1001, 1001))
 
         # Add channel dimension to labels (this ensures shape is (height, width, 1))
         label = np.expand_dims(label, axis=-1)
 
-        # Convert 0 -> 1 and 1 -> 0 
+        ### Convert 0 -> 1 and 1 -> 0, as after exporting from QuPath this isn't done correctly
         # Compute the minimum and maximum values dynamically
         min_val = np.min(label)
         max_val = np.max(label)
@@ -51,6 +44,27 @@ def load_images(images_dir, labels_dir):
 
         images.append(image)
         labels.append(label_reversed)
+
+        if data_augmentation:
+            # Set images to tensors to prepare for transformation
+            image_tensor = torch.tensor(image)
+            label_tensor = torch.tensor(label_reversed)
+
+            # Random transformations (using pytorch transorms didn't give the same transformations to label and image, so it had to be done manually)
+            if torch.rand(1) > 0.5:  # Random Horizontal Flip
+                image_tensor = TF.hflip(image_tensor)
+                label_tensor = TF.hflip(label_tensor)
+
+            if torch.rand(1) > 0.5:  # Random Vertical Flip
+                image_tensor = TF.vflip(image_tensor)
+                label_tensor = TF.vflip(label_tensor)
+
+            image_np_augmented = image_tensor.numpy()
+            label_np_augmented = label_tensor.numpy()
+
+        
+            images.append(image_np_augmented)
+            labels.append(label_np_augmented)
 
         np_images = np.array(images)
         np_labels = np.array(labels)

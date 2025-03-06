@@ -1,11 +1,12 @@
 import torch
-from torchvision.transforms import functional as F
+from torchvision.transforms.v2 import functional as F
 
 # Define custom Dataset class
 class Dataset(torch.utils.data.Dataset):
     def __init__(self, images, labels):
         self.images = images
         self.labels = labels
+        self.data_augmentation = False
 
     def __len__(self):
         return len(self.images)
