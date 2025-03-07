@@ -7,7 +7,7 @@ from dice_loss import DiceLoss
 
 # Load U-NET model
 model = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
-    in_channels=3, out_channels=1, init_features=32, pretrained=False)
+    in_channels=3, out_channels=1, init_features=32, pretrained=True)
 
 # Image data paths
 images_dir = './images'
@@ -57,7 +57,7 @@ print(f"Model saved to {model_save_path}")
 
 # Visualize results (and save) for a sample image
 for img in range(len(dataset)):
-    view_results(model, dataset, idx=img, save_path=f"./results-augmentation-200epochs/restult-{img}.png", show=False)
+    view_results(model, dataset, idx=img, save_path=f"./results-augmentation-200epochs-pretrained/restult-{img}.png", show=False)
 
 # view_results(model, dataset, idx=0, show=True)
 # view_results(model, dataset, idx=1, show=True)
