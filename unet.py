@@ -57,7 +57,7 @@ print(f"Model saved to {model_save_path}")
 
 # Visualize results (and save) for a sample image
 for img in range(len(dataset)):
-    view_results(model, dataset, idx=img, save_path=f"./results-augmentation-200epochs-pretrained/restult-{img}.png", show=False)
+    view_results(model, dataset, idx=img, save_path=f"./results-151imgs-200epochs-pretrained/restult-{img}.png", show=False)
 
 # view_results(model, dataset, idx=0, show=True)
 # view_results(model, dataset, idx=1, show=True)
