@@ -5,6 +5,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import torch
 import torchvision.transforms.functional as TF
+from torchvision.transforms import v2
 
 # This file contains a function to load the images that will be used
 # It also contains a function to view the results for image x in a given dataset
@@ -21,7 +22,7 @@ def load_images(images_dir, labels_dir, data_augmentation=False, data_augmentati
         img_path = os.path.join(images_dir, image_file)
         label_path = os.path.join(labels_dir, image_file.replace('.ome.tif', '-labels.png'))
 
-        image = cv2.imread(img_path, cv2.IMREAD_COLOR)  # Read as RGB
+        image = cv2.imread(img_path, cv2.IMREAD_COLOR_RGB) # Read as RGB
         label = cv2.imread(label_path, cv2.IMREAD_GRAYSCALE)  # Read as grayscale
 
         # Add channel dimension to labels (this ensures shape is (height, width, 1))
@@ -48,10 +49,10 @@ def load_images(images_dir, labels_dir, data_augmentation=False, data_augmentati
         if data_augmentation:
             for augmentations in range(data_augmentation_range):
                 # Set images to tensors to prepare for transformation
-                image_tensor = torch.tensor(image)
-                label_tensor = torch.tensor(label_reversed)
+                image_tensor = torch.from_numpy(image).permute(2,0,1) # Convert to (C, H, W)
+                label_tensor = torch.from_numpy(label_reversed).permute(2,0,1) # Convert to (1, H, W)
 
-                # Random transformations (using pytorch transorms didn't give the same transformations to label and image, so it had to be done manually)
+                # # Random transformations (using pytorch transorms didn't give the same transformations to label and image, so it had to be done manually)
                 if torch.rand(1) > 0.5:  # Random Horizontal Flip
                     image_tensor = TF.hflip(image_tensor)
                     label_tensor = TF.hflip(label_tensor)
@@ -60,22 +61,18 @@ def load_images(images_dir, labels_dir, data_augmentation=False, data_augmentati
                     image_tensor = TF.vflip(image_tensor)
                     label_tensor = TF.vflip(label_tensor)
 
-                image_np_augmented = image_tensor.numpy()
-                label_np_augmented = label_tensor.numpy()
+                image_np_augmented = image_tensor.permute(1,2,0).numpy().astype(np.uint8)
+                label_np_augmented = label_tensor.permute(1,2,0).numpy().astype(np.uint8)
 
-            
                 images.append(image_np_augmented)
                 labels.append(label_np_augmented)
-
-        np_images = np.array(images)
-        np_labels = np.array(labels)
     
-    return np_images, np_labels
+    return np.array(images, dtype=np.uint8), np.array(labels, dtype=np.uint8)
 
 def view_results(model, dataset, idx=0, save_path=None, show = False):
     model.eval()
     image, label = dataset[idx]
-    image = image.unsqueeze(0)
+    image = image.unsqueeze(0) # model expects a "batch" even when predicting for 1 image
 
     with torch.no_grad():
         output = model(image)

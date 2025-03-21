@@ -15,7 +15,7 @@ labels_dir = './labels'
 
 # Load in images
     # Shape = (number of images, x size, y size, channels)
-images_np, labels_np = load_images(images_dir, labels_dir, data_augmentation=True, data_augmentation_range=5)
+images_np, labels_np = load_images(images_dir, labels_dir, data_augmentation=True, data_augmentation_range=10)
 
 # Initialize dataset
 dataset = Dataset(images_np, labels_np)
@@ -48,7 +48,7 @@ def train_model(model, train_loader, optimizer, loss_fn, epochs=20):
 loss_fn = DiceLoss()
 optimizer = torch.optim.SGD(model.parameters(), lr=0.001)
 
-train_model(model, train_dataloader, optimizer, loss_fn, epochs=200)
+train_model(model, train_dataloader, optimizer, loss_fn, epochs=500)
 
 # Save the trained model
 model_save_path = './unet_model.pth'
@@ -57,7 +57,7 @@ print(f"Model saved to {model_save_path}")
 
 # Visualize results (and save) for a sample image
 for img in range(len(dataset)):
-    view_results(model, dataset, idx=img, save_path=f"./results-augmentationrange5/result-{img}.png", show=False)
+    view_results(model, dataset, idx=img, save_path=f"./experiment-results/result-{img}.png", show=False)
 
 
 # view_results(model, dataset, idx=0, show=True)

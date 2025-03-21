@@ -17,8 +17,8 @@ def random_crop_image_and_label(image, label, size):
     return cropped_image, cropped_label
 
 # Load in the image and label
-image = cv2.imread('./train/0cdf5b5d0ce1_01.jpg', cv2.IMREAD_COLOR)
-with Image.open('./trainannot/0cdf5b5d0ce1_01_mask.gif') as gif:
+image = cv2.imread('./images/NHB01_S03.ome.tif', cv2.IMREAD_COLOR_RGB)
+with Image.open('./labels/NHB01_S03-labels.png') as gif:
     label = np.array(gif.convert('L'))  # Convert to grayscale
 
 # Preprocess
