@@ -9,7 +9,7 @@ import torchvision.transforms.functional as TF
 # This file contains a function to load the images that will be used
 # It also contains a function to view the results for image x in a given dataset
 
-def load_images(images_dir, labels_dir, data_augmentation=False):
+def load_images(images_dir, labels_dir, data_augmentation=False, data_augmentation_range=1):
     images, labels = [], []
 
     # Get sorted lists of image and label filenames
@@ -46,25 +46,26 @@ def load_images(images_dir, labels_dir, data_augmentation=False):
         labels.append(label_reversed)
 
         if data_augmentation:
-            # Set images to tensors to prepare for transformation
-            image_tensor = torch.tensor(image)
-            label_tensor = torch.tensor(label_reversed)
+            for augmentations in range(data_augmentation_range):
+                # Set images to tensors to prepare for transformation
+                image_tensor = torch.tensor(image)
+                label_tensor = torch.tensor(label_reversed)
 
-            # Random transformations (using pytorch transorms didn't give the same transformations to label and image, so it had to be done manually)
-            if torch.rand(1) > 0.5:  # Random Horizontal Flip
-                image_tensor = TF.hflip(image_tensor)
-                label_tensor = TF.hflip(label_tensor)
+                # Random transformations (using pytorch transorms didn't give the same transformations to label and image, so it had to be done manually)
+                if torch.rand(1) > 0.5:  # Random Horizontal Flip
+                    image_tensor = TF.hflip(image_tensor)
+                    label_tensor = TF.hflip(label_tensor)
 
-            if torch.rand(1) > 0.5:  # Random Vertical Flip
-                image_tensor = TF.vflip(image_tensor)
-                label_tensor = TF.vflip(label_tensor)
+                if torch.rand(1) > 0.5:  # Random Vertical Flip
+                    image_tensor = TF.vflip(image_tensor)
+                    label_tensor = TF.vflip(label_tensor)
 
-            image_np_augmented = image_tensor.numpy()
-            label_np_augmented = label_tensor.numpy()
+                image_np_augmented = image_tensor.numpy()
+                label_np_augmented = label_tensor.numpy()
 
-        
-            images.append(image_np_augmented)
-            labels.append(label_np_augmented)
+            
+                images.append(image_np_augmented)
+                labels.append(label_np_augmented)
 
         np_images = np.array(images)
         np_labels = np.array(labels)
