@@ -1,66 +1,98 @@
+from collections import OrderedDict
+
 import torch
-from images import load_images, view_results
-from utils import Dataset
-import matplotlib.pyplot as plt
-import numpy as np
-from dice_loss import DiceLoss
-
-# Load U-NET model
-model = torch.hub.load('mateuszbuda/brain-segmentation-pytorch', 'unet',
-    in_channels=3, out_channels=1, init_features=32, pretrained=False)
-
-# Image data paths
-images_dir = './images'
-labels_dir = './labels'
-
-# Load in images
-    # Shape = (number of images, x size, y size, channels)
-images_np, labels_np = load_images(images_dir, labels_dir, data_augmentation=True, data_augmentation_range=10)
-
-# Initialize dataset
-dataset = Dataset(images_np, labels_np)
-train_dataloader = torch.utils.data.DataLoader(dataset, batch_size=8, shuffle=True)
-
-## TRAINING THE MODEL ##
-def train_model(model, train_loader, optimizer, loss_fn, epochs=20):
-    model.train() # prepare the model to be trained
-
-    for epoch in range(epochs):
-        epoch_loss = 0.0
-
-        for images, labels in train_loader:
-            # Forward pass, make predictions for one batch
-            outputs = model(images)
-
-            # Compute loss between prediction and ground truth labels
-            loss = loss_fn(outputs, labels)
-
-            # Backward pass
-            optimizer.zero_grad() # set gradients to zero
-            loss.backward() # computes gradients
-            optimizer.step() # adjusts weights
-
-            epoch_loss += loss.item()
-
-        print(f"Epoch [{epoch+1}/{epochs}], Loss: {epoch_loss / len(train_loader):.4f}")
-
-# loss_fn = torch.nn.BCELoss()
-loss_fn = DiceLoss()
-optimizer = torch.optim.SGD(model.parameters(), lr=0.001)
-
-train_model(model, train_dataloader, optimizer, loss_fn, epochs=500)
-
-# Save the trained model
-model_save_path = './unet_model.pth'
-torch.save(model.state_dict(), model_save_path)
-print(f"Model saved to {model_save_path}")
-
-# Visualize results (and save) for a sample image
-for img in range(len(dataset)):
-    view_results(model, dataset, idx=img, save_path=f"./experiment-results/result-{img}.png", show=False)
+import torch.nn as nn
 
 
-# view_results(model, dataset, idx=0, show=True)
-# view_results(model, dataset, idx=1, show=True)
-# view_results(model, dataset, idx=2, show=True)
-# view_results(model, dataset, idx=3, show=True)
+class UNet(nn.Module):
+
+    def __init__(self, in_channels=3, out_channels=1, init_features=32):
+        super(UNet, self).__init__()
+
+        features = init_features
+        self.encoder1 = UNet._block(in_channels, features, name="enc1")
+        self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.encoder2 = UNet._block(features, features * 2, name="enc2")
+        self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.encoder3 = UNet._block(features * 2, features * 4, name="enc3")
+        self.pool3 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.encoder4 = UNet._block(features * 4, features * 8, name="enc4")
+        self.pool4 = nn.MaxPool2d(kernel_size=2, stride=2)
+
+        self.bottleneck = UNet._block(features * 8, features * 16, name="bottleneck")
+
+        self.upconv4 = nn.ConvTranspose2d(
+            features * 16, features * 8, kernel_size=2, stride=2
+        )
+        self.decoder4 = UNet._block((features * 8) * 2, features * 8, name="dec4")
+        self.upconv3 = nn.ConvTranspose2d(
+            features * 8, features * 4, kernel_size=2, stride=2
+        )
+        self.decoder3 = UNet._block((features * 4) * 2, features * 4, name="dec3")
+        self.upconv2 = nn.ConvTranspose2d(
+            features * 4, features * 2, kernel_size=2, stride=2
+        )
+        self.decoder2 = UNet._block((features * 2) * 2, features * 2, name="dec2")
+        self.upconv1 = nn.ConvTranspose2d(
+            features * 2, features, kernel_size=2, stride=2
+        )
+        self.decoder1 = UNet._block(features * 2, features, name="dec1")
+
+        self.conv = nn.Conv2d(
+            in_channels=features, out_channels=out_channels, kernel_size=1
+        )
+
+    def forward(self, x):
+        enc1 = self.encoder1(x)
+        enc2 = self.encoder2(self.pool1(enc1))
+        enc3 = self.encoder3(self.pool2(enc2))
+        enc4 = self.encoder4(self.pool3(enc3))
+
+        bottleneck = self.bottleneck(self.pool4(enc4))
+
+        dec4 = self.upconv4(bottleneck)
+        dec4 = torch.cat((dec4, enc4), dim=1)
+        dec4 = self.decoder4(dec4)
+        dec3 = self.upconv3(dec4)
+        dec3 = torch.cat((dec3, enc3), dim=1)
+        dec3 = self.decoder3(dec3)
+        dec2 = self.upconv2(dec3)
+        dec2 = torch.cat((dec2, enc2), dim=1)
+        dec2 = self.decoder2(dec2)
+        dec1 = self.upconv1(dec2)
+        dec1 = torch.cat((dec1, enc1), dim=1)
+        dec1 = self.decoder1(dec1)
+        return torch.sigmoid(self.conv(dec1))
+
+    @staticmethod
+    def _block(in_channels, features, name):
+        return nn.Sequential(
+            OrderedDict(
+                [
+                    (
+                        name + "conv1",
+                        nn.Conv2d(
+                            in_channels=in_channels,
+                            out_channels=features,
+                            kernel_size=3,
+                            padding=1,
+                            bias=False,
+                        ),
+                    ),
+                    (name + "norm1", nn.BatchNorm2d(num_features=features)),
+                    (name + "relu1", nn.ReLU(inplace=True)),
+                    (
+                        name + "conv2",
+                        nn.Conv2d(
+                            in_channels=features,
+                            out_channels=features,
+                            kernel_size=3,
+                            padding=1,
+                            bias=False,
+                        ),
+                    ),
+                    (name + "norm2", nn.BatchNorm2d(num_features=features)),
+                    (name + "relu2", nn.ReLU(inplace=True)),
+                ]
+            )
+        )

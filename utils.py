@@ -1,28 +1,47 @@
-import torch
 from torchvision.transforms.v2 import functional as F
+import matplotlib.pyplot as plt
+import torch
+import numpy as np
 
-# Define custom Dataset class
-class Dataset(torch.utils.data.Dataset):
-    def __init__(self, images, labels):
-        self.images = images
-        self.labels = labels
-        self.data_augmentation = False
+def visualize_predictions(model, val_loader, device, num_images=5):
+    model.eval()  # Set model to evaluation mode
+    images_shown = 0
 
-    def __len__(self):
-        return len(self.images)
+    with torch.no_grad():
+        for images, labels in val_loader:
+            images, labels = images.to(device), labels.to(device)
+            outputs = model(images)  # Get predictions
 
-    def __getitem__(self, idx):
-        image = self.images[idx]
-        label = self.labels[idx]
-        
-        # Convert to tensors with correct dtype 
-        image = torch.tensor(image.transpose(2, 0, 1), dtype=torch.float32)  # HWC -> CHW, Float
-        label = torch.tensor(label.transpose(2, 0, 1), dtype=torch.float32)  # Add channel dimension (1, H, W)
+            # Convert predictions to binary (threshold = 0.5)
+            predictions = torch.sigmoid(outputs)  # Apply sigmoid activation
+            predictions = (predictions > 0.5).float()
 
-        # Apply the custom random crop
-        image_out, label_out = random_crop_image_and_label(image, label, size=(256, 256))
-        
-        return image_out, label_out
+            # Move tensors to CPU and convert to NumPy
+            images = images.cpu().numpy().transpose(0, 2, 3, 1)  # Convert (C, H, W) → (H, W, C)
+            labels = labels.cpu().numpy().squeeze(1)  # Remove channel dim
+            predictions = predictions.cpu().numpy().squeeze(1)  # Remove channel dim
+
+            # Plot images
+            for i in range(min(num_images, len(images))):
+                fig, ax = plt.subplots(1, 3, figsize=(12, 4))
+                
+                ax[0].imshow(images[i].astype(np.uint8))  # Original Image
+                ax[0].set_title("Original Image")
+                
+                ax[1].imshow(labels[i], cmap="gray")  # Ground Truth
+                ax[1].set_title("Ground Truth")
+                
+                ax[2].imshow(predictions[i], cmap="gray")  # Model Prediction
+                ax[2].set_title("Model Prediction")
+
+                for a in ax:
+                    a.axis("off")  # Hide axis ticks
+
+                plt.show()
+
+                images_shown += 1
+                if images_shown >= num_images:
+                    return  # Stop after showing the desired number of images
 
 # Custom random crop function
 def random_crop_image_and_label(image, label, size):
