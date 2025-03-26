@@ -12,14 +12,15 @@ def main(args):
     print(f"Using device: {device}")
 
     # Load full dataset
-    dataset = MicrogliaDataset(images_dir='./dataset/images', 
-                               labels_dir='./dataset/labels', 
-                               crop_size=(args.image_size, args.image_size))
+    dataset = MicrogliaDataset(images_dir='./images', 
+                               labels_dir='./labels', 
+                               crop_size=(args.image_size, args.image_size),
+                               data_augmentation=args.augmentation)
     
     # Split dataset
-    train_size = int(0.8 * len(dataset))  # 80% for training
+    train_size = int(0.85 * len(dataset))  # 80% for training
     val_size = len(dataset) - train_size  # 20% for validation
-    torch.manual_seed(4)  # Ensures reproducibility
+    torch.manual_seed(args.seed)  # Ensures reproducibility
     train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
 
     # Create DataLoaders
@@ -31,7 +32,8 @@ def main(args):
     model.to(device)
 
     # Loss function and optimizer
-    loss_fn =   DiceLoss()
+    # loss_fn = DiceLoss()
+    loss_fn = torch.nn.BCELoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=args.lr)
 
     ### Training loop ###
@@ -78,11 +80,13 @@ def main(args):
         print(f"Epoch {epoch+1}/{args.epochs}: Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Time: {epoch_time:.2f}s")
     
     # After training, visualize some predictions
-    visualize_predictions(model, val_loader, device, num_images=5)
+    visualize_predictions(model, val_loader, device, num_images=100, show=False, save="results_validation")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--epochs", type=int, default=5, help="Number of epochs")
+    parser.add_argument("--seed", type=int, default=4, help="Seed set before splitting dataset into validation & training")
+    parser.add_argument("--augmentation", type=bool, default=True, help="Whether or not augmentation is applied to dataset")
+    parser.add_argument("--epochs", type=int, default=800, help="Number of epochs")
     parser.add_argument("--lr", type=float, default=0.001, help="Learning rate")
     parser.add_argument("--image_size", type=int, default=256, help="Image crop size")
     parser.add_argument("--batch_size", type=int, default=8, help="Batch size")

@@ -2,8 +2,10 @@ from torchvision.transforms.v2 import functional as F
 import matplotlib.pyplot as plt
 import torch
 import numpy as np
+import torchvision.transforms.functional as TF
+import os
 
-def visualize_predictions(model, val_loader, device, num_images=5):
+def visualize_predictions(model, val_loader, device, num_images=10, show=False, save=False):
     model.eval()  # Set model to evaluation mode
     images_shown = 0
 
@@ -13,10 +15,10 @@ def visualize_predictions(model, val_loader, device, num_images=5):
             outputs = model(images)  # Get predictions
 
             # Convert predictions to binary (threshold = 0.5)
-            predictions = torch.sigmoid(outputs)  # Apply sigmoid activation
-            predictions = (predictions > 0.5).float()
+            predictions = (outputs > 0.5).float()
 
             # Move tensors to CPU and convert to NumPy
+            print(images.shape)
             images = images.cpu().numpy().transpose(0, 2, 3, 1)  # Convert (C, H, W) → (H, W, C)
             labels = labels.cpu().numpy().squeeze(1)  # Remove channel dim
             predictions = predictions.cpu().numpy().squeeze(1)  # Remove channel dim
@@ -37,7 +39,15 @@ def visualize_predictions(model, val_loader, device, num_images=5):
                 for a in ax:
                     a.axis("off")  # Hide axis ticks
 
-                plt.show()
+                if show:
+                    plt.show()
+
+                if save:
+                    os.makedirs(save, exist_ok=True)
+                    image_name = f"image_{images_shown + 1}.png"
+                    save_path = os.path.join(save, image_name)
+                    plt.savefig(save_path)  # Save the image
+                    plt.close(fig)  # Close the plot to prevent overlapping images
 
                 images_shown += 1
                 if images_shown >= num_images:
@@ -54,3 +64,15 @@ def random_crop_image_and_label(image, label, size):
     cropped_label = F.crop(label, i, j, h, w)
 
     return cropped_image, cropped_label
+
+def get_transforms(image, label):
+    # # Random transformations (using pytorch transorms didn't give the same transformations to label and image, so it had to be done manually)
+    if torch.rand(1) > 0.5:  # Random Horizontal Flip
+        image = TF.hflip(image)
+        label = TF.hflip(label)
+
+    if torch.rand(1) > 0.5:  # Random Vertical Flip
+        image = TF.vflip(image)
+        label = TF.vflip(label)
+
+    return image, label

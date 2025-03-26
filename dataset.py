@@ -1,17 +1,16 @@
 import torch
-from utils import random_crop_image_and_label
+from utils import random_crop_image_and_label, get_transforms
 import numpy as np
 import cv2
 import os
 
 class MicrogliaDataset(torch.utils.data.Dataset):
-    def __init__(self, images_dir, labels_dir, crop_size=(256, 256)):
+    def __init__(self, images_dir, labels_dir, crop_size=(256, 256), data_augmentation=False):
         self.images_dir = images_dir
         self.labels_dir = labels_dir
 
         self.crop_size = crop_size
-        # self.data_augmentation = data_augmentation
-        # self.data_augmentation_range = data_augmentation_range
+        self.data_augmentation = data_augmentation
         
         self.image_files = sorted(os.listdir(images_dir))
         self.label_files = sorted(os.listdir(labels_dir))
@@ -28,7 +27,7 @@ class MicrogliaDataset(torch.utils.data.Dataset):
         label_path = os.path.join(self.labels_dir, image_file.replace('.ome.tif', '-labels.png'))
 
         # Read images
-        image = cv2.imread(img_path, cv2.IMREAD_COLOR)  # Read as RGB
+        image = cv2.imread(img_path, cv2.IMREAD_COLOR_RGB)  # Read as RGB
         label = cv2.imread(label_path, cv2.IMREAD_GRAYSCALE)  # Read as grayscale
         
         # Expand label dimension to (H, W, 1)
@@ -49,5 +48,9 @@ class MicrogliaDataset(torch.utils.data.Dataset):
 
         # Apply random crop
         image_out, label_out = random_crop_image_and_label(image_tensor, label_tensor, size=self.crop_size)
+
+        # Apply data augmentation
+        if self.data_augmentation:
+            image_out, label_out = get_transforms(image_out, label_out)
 
         return image_out, label_out
