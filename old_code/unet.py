@@ -1,6 +1,6 @@
 import torch
 from images import load_images, view_results
-from utils import Dataset
+from old_code.utils import Dataset
 import matplotlib.pyplot as plt
 import numpy as np
 from dice_loss import DiceLoss
@@ -48,7 +48,7 @@ def train_model(model, train_loader, optimizer, loss_fn, epochs=20):
 loss_fn = DiceLoss()
 optimizer = torch.optim.SGD(model.parameters(), lr=0.001)
 
-train_model(model, train_dataloader, optimizer, loss_fn, epochs=500)
+train_model(model, train_dataloader, optimizer, loss_fn, epochs=2)
 
 # Save the trained model
 model_save_path = './unet_model.pth'

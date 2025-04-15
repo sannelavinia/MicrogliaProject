@@ -5,7 +5,7 @@ import numpy as np
 import torchvision.transforms.functional as TF
 import os
 
-def visualize_predictions(model, val_loader, device, num_images=10, show=False, save=False):
+def visualize_predictions(model, val_loader, device, multiclass, num_images=10, show=False, save=False):
     model.eval()  # Set model to evaluation mode
     images_shown = 0
 
@@ -14,14 +14,21 @@ def visualize_predictions(model, val_loader, device, num_images=10, show=False, 
             images, labels = images.to(device), labels.to(device)
             outputs = model(images)  # Get predictions
 
-            # Convert predictions to binary (threshold = 0.5)
-            predictions = (outputs > 0.5).float()
-
             # Move tensors to CPU and convert to NumPy
-            print(images.shape)
             images = images.cpu().numpy().transpose(0, 2, 3, 1)  # Convert (C, H, W) → (H, W, C)
-            labels = labels.cpu().numpy().squeeze(1)  # Remove channel dim
-            predictions = predictions.cpu().numpy().squeeze(1)  # Remove channel dim
+
+            if multiclass:
+                labels = labels.cpu().numpy()
+
+                predictions = torch.argmax(outputs, dim=1)
+                predictions = predictions.cpu().numpy()
+
+            else:
+                labels = labels.cpu().numpy().squeeze(1)  # Remove channel dim
+
+                # Convert predictions to binary (threshold = 0.5)
+                predictions = (outputs > 0.5).float()
+                predictions = predictions.cpu().numpy().squeeze(1)  # Remove channel dim
 
             # Plot images
             for i in range(min(num_images, len(images))):
@@ -30,10 +37,10 @@ def visualize_predictions(model, val_loader, device, num_images=10, show=False, 
                 ax[0].imshow(images[i].astype(np.uint8))  # Original Image
                 ax[0].set_title("Original Image")
                 
-                ax[1].imshow(labels[i], cmap="gray")  # Ground Truth
+                ax[1].imshow(labels[i], cmap="viridis")  # Ground Truth
                 ax[1].set_title("Ground Truth")
                 
-                ax[2].imshow(predictions[i], cmap="gray")  # Model Prediction
+                ax[2].imshow(predictions[i], cmap="viridis")  # Model Prediction
                 ax[2].set_title("Model Prediction")
 
                 for a in ax:
@@ -66,7 +73,7 @@ def random_crop_image_and_label(image, label, size):
     return cropped_image, cropped_label
 
 def get_transforms(image, label):
-    # # Random transformations (using pytorch transorms didn't give the same transformations to label and image, so it had to be done manually)
+    # Random transformations (using pytorch transorms didn't give the same transformations to label and image, so it had to be done manually)
     if torch.rand(1) > 0.5:  # Random Horizontal Flip
         image = TF.hflip(image)
         label = TF.hflip(label)
@@ -75,4 +82,7 @@ def get_transforms(image, label):
         image = TF.vflip(image)
         label = TF.vflip(label)
 
-    return image, label
+    return image, label 
+
+
+

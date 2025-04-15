@@ -5,12 +5,15 @@ import cv2
 import os
 
 class MicrogliaDataset(torch.utils.data.Dataset):
-    def __init__(self, images_dir, labels_dir, crop_size=(256, 256), data_augmentation=False):
+    
+    def __init__(self, images_dir, labels_dir, crop_size=(256, 256), data_augmentation=False, clahe=True, multiclass=False):
         self.images_dir = images_dir
         self.labels_dir = labels_dir
 
         self.crop_size = crop_size
         self.data_augmentation = data_augmentation
+        self.clahe = clahe
+        self.multiclass = multiclass
         
         self.image_files = sorted(os.listdir(images_dir))
         self.label_files = sorted(os.listdir(labels_dir))
@@ -26,25 +29,46 @@ class MicrogliaDataset(torch.utils.data.Dataset):
         img_path = os.path.join(self.images_dir, image_file)
         label_path = os.path.join(self.labels_dir, image_file.replace('.ome.tif', '-labels.png'))
 
-        # Read images
-        image = cv2.imread(img_path, cv2.IMREAD_COLOR_RGB)  # Read as RGB
-        label = cv2.imread(label_path, cv2.IMREAD_GRAYSCALE)  # Read as grayscale
-        
-        # Expand label dimension to (H, W, 1)
-        label = np.expand_dims(label, axis=-1)
+        if self.multiclass:
+            # Read images
+            image = cv2.imread(img_path, cv2.IMREAD_COLOR_RGB)  # Read as RGB
+            label = cv2.imread(label_path, cv2.IMREAD_COLOR_RGB)  # Read as RGB (in reality it's on one channel with values 0,1,2)
 
-        # Normalize the label (0 -> 1, 1 -> 0) as QuPath reverses labels
-        if np.max(label) == np.min(label):
-            label_normalized = np.zeros_like(label)  # Set to all 0s (or 1s, depending on your needs)
+            # Single out correct channel, containing 0=background, 1=nonfoamy, 2=foamy
+            label = label[:,:,2]
+
+            # Expand label dimension to (H, W, 1)
+            # label = np.expand_dims(label, axis=-1)
+            label = label.astype(np.int64) 
+
         else:
-            label_normalized = (label - np.min(label)) / (np.max(label) - np.min(label))
+            # Read images
+            image = cv2.imread(img_path, cv2.IMREAD_COLOR_RGB)  # Read as RGB
+            label = cv2.imread(label_path, cv2.IMREAD_GRAYSCALE)  # Read as grayscale
 
-        label_binary = (label_normalized > 0.5).astype(np.uint8)
-        label_reversed = 1 - label_binary
+            # Normalize binary image from range (0-255) to (0.0-1.0)
+            label = label.astype(np.float64) / np.float64(255.0)
+
+            # Expand label dimension to (H, W, 1)
+            label = np.expand_dims(label, axis=-1)
+
+        # Apply histogram equalisation using CLAHE
+            if self.clahe:
+                clahe_application = cv2.createCLAHE(clipLimit=1.0, tileGridSize=(5,5))
+                lab = cv2.cvtColor(image, cv2.COLOR_RGB2LAB)
+                l, a, b = cv2.split(lab)
+
+                l_clahe = clahe_application.apply(l)
+                lab_clahe = cv2.merge((l_clahe, a, b))
+                image = cv2.cvtColor(lab_clahe, cv2.COLOR_LAB2RGB)
 
         # Convert to tensors
-        image_tensor = torch.tensor(image.transpose(2, 0, 1), dtype=torch.float32)  # HWC -> CHW
-        label_tensor = torch.tensor(label_reversed.transpose(2, 0, 1), dtype=torch.float32)  # (1, H, W)
+        if self.multiclass:
+            image_tensor = torch.tensor(image.transpose(2, 0, 1), dtype=torch.float32)  # HWC -> CHW
+            label_tensor = torch.tensor(label, dtype=torch.long)
+        else:
+            image_tensor = torch.tensor(image.transpose(2, 0, 1), dtype=torch.float32)  # HWC -> CHW
+            label_tensor = torch.tensor(label.transpose(2, 0, 1), dtype=torch.float32)  # (1, H, W)
 
         # Apply random crop
         image_out, label_out = random_crop_image_and_label(image_tensor, label_tensor, size=self.crop_size)
